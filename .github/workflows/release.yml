@@ -9,7 +9,6 @@ on:
 jobs:
   build-release:
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     
     steps:
       - name: Checkout code
@@ -49,11 +48,9 @@ jobs:
             fi
           done
 
-      - name: Create Git tag and Release
+      - name: Create Git tag
         run: |
-          # ВЕРНУТЬСЯ В КОРНЕВУЮ ДИРЕКТОРИЮ!
-          cd $GITHUB_WORKSPACE
-          cd build/Release
+          # ОСТАЕМСЯ В КОРНЕВОЙ ДИРЕКТОРИИ!
           git config --global user.email "action@github.com"
           git config --global user.name "GitHub Action"
           TAG="v${{ github.run_number }}"
