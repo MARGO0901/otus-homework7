@@ -76,9 +76,26 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: bulk-package
+          path: ./downloads
 
-      - name: List files for debugging
-        run: ls -la
+      - name: Find and prepare package
+        id: prepare_package
+        run: |
+          # Переходим в директорию с загруженными файлами
+          cd downloads
+          echo "Files in downloads directory:"
+          ls -la
+          
+          # Находим любой deb файл и копируем с нужным именем
+          DEB_FILE=$(find . -name "*.deb" -type f | head -1)
+          if [ -n "$DEB_FILE" ]; then
+            echo "Found deb file: $DEB_FILE"
+            cp "$DEB_FILE" "../bulk-0.0.${{ github.run_number }}-Linux.deb"
+            echo "✅ Package prepared"
+          else
+            echo "❌ No deb files found!"
+            exit 1
+          fi
 
       - name: Create Release and Upload Asset
         uses: softprops/action-gh-release@v1
