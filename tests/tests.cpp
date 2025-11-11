@@ -35,7 +35,7 @@ void run_bulk_test(std::string&& test_name) {
     std::string input_file = (project_root / "tests" / input).string();
     std::string output_file = (project_root / "tests" / output).string();
     std::string bulk_exe =
-        (project_root / "build" / "Release" / "src" / "bulk").string();
+        (project_root / "src" / "bulk").string();
 
     std::cout << "Project root: " << project_root << std::endl;
     std::cout << "Input file: " << input_file

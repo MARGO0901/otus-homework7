@@ -13,14 +13,14 @@ if(BUILD_TESTING)
     )
     
     # Линковка
-    target_link_libraries(test_bulk PRIVATE
+    target_link_libraries(test_bulk PUBLIC
         Boost::unit_test_framework
         Boost::filesystem
         Boost::system
     )
 
      # ВАЖНО: Добавляем флаг для динамической линковки Boost.Test
-    target_compile_definitions(test_bulk PRIVATE BOOST_TEST_DYN_LINK)
+    #target_compile_definitions(test_bulk PRIVATE BOOST_TEST_DYN_LINK)
     
     # Копируем тестовые данные в build директорию
     file(COPY 

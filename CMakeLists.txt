@@ -10,7 +10,7 @@ include(CPack)
 
 add_subdirectory(src)
 
-#add_subdirectory(tests)
+add_subdirectory(tests)
 
 set(CPACK_GENERATOR DEB)
 set(CPACK_PACKAGE_VERSION_MAJOR "${PROJECT_VERSION_MAJOR}")
