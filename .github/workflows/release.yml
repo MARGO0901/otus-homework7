@@ -11,14 +11,59 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Cache Conan dependencies
+        uses: action/cache@v3
         with:
-          submodules: true
-      - run: sudo apt-get update && sudo apt-get install libboost-test-dev -y
-      - run: cmake . -DPATCH_VERSION=${{ github.run_number }} -DWITH_BOOST_TEST=ON
-      - run: cmake --build .
-      - run: cmake --build . --target test
-      - run: cmake --build . --target package
+          path: ~/.conan2
+          key: ${{ runner.os }}-conan-${{ hashFiles('conanfile.py') }}
+          restore-keys:  ${{ runner.os }}-conan-
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential python3-pip
+
+      - name: Install Conan
+        run: |
+          pip3 install conan
+          conan profile detect --force
+
+      - name: Build and test with Conan
+        run: |
+          mkdir build && cd build
+          conan install .. --build=missing
+          conan build .. 
+
+      - name: Run tests
+        run: |
+          cd build/Release
+          ./test_bulk 
+
+      - name: Create package
+        run: |
+          cd build/Release
+          cpack
+    
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bulk-package
+          path: build/Release/*.deb
+
+    release:
+      needs: build-and-test
+      runs-on: ubuntu-latest
+      if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    
+      steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: bulk-package
+
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
@@ -29,6 +74,7 @@ jobs:
           release_name: Release ${{ github.run_number }}
           draft: false
           prerelease: false
+
       - name: Upload Release Asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
