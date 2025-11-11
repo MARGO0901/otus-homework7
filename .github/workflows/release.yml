@@ -4,24 +4,19 @@ on:
   push:
     branches:
       - master
-      - feature/github_actions
   workflow_dispatch:
 
 jobs:
-  build-and-test:
+  build-release:
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
-      - name: Cache Conan dependencies
-        uses: actions/cache@v3
         with:
-          path: ~/.conan2
-          key: ${{ runner.os }}-conan-${{ hashFiles('conanfile.py') }}
-          restore-keys: |
-            ${{ runner.os }}-conan-
-
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -32,79 +27,46 @@ jobs:
           pip3 install conan
           conan profile detect --force
 
-      - name: Build and test with Conan
+      - name: Build and test
         run: |
           mkdir build && cd build
           conan install .. --build=missing
           conan build .. 
-
-      - name: Run tests
-        run: |
-          cd build/Release/tests
-          ./test_bulk 
+          cd Release/tests && ./test_bulk
 
       - name: Create package
         run: |
           cd build/Release
           cpack
 
-      - name: Rename package file
+      - name: Rename package
         run: |
           cd build/Release
-          # Находим созданный deb-пакет и переименовываем
           for file in *.deb; do
             if [ -f "$file" ]; then
               mv "$file" "bulk-0.0.${{ github.run_number }}-Linux.deb"
-              echo "Renamed $file to bulk-0.0.${{ github.run_number }}-Linux.deb"
               break
             fi
           done
-    
-      - name: Upload package artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: bulk-package
-          path: build/Release/*.deb
 
-  release:
-    needs: build-and-test
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-  
-    steps:
-      - name: Download artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: bulk-package
-          path: ./downloads
-
-      - name: Find and prepare package
-        id: prepare_package
+      - name: Create Git tag and Release
         run: |
-          # Переходим в директорию с загруженными файлами
-          cd downloads
-          echo "Files in downloads directory:"
-          ls -la
-          
-          # Находим любой deb файл и копируем с нужным именем
-          DEB_FILE=$(find . -name "*.deb" -type f | head -1)
-          if [ -n "$DEB_FILE" ]; then
-            echo "Found deb file: $DEB_FILE"
-            cp "$DEB_FILE" "../bulk-0.0.${{ github.run_number }}-Linux.deb"
-            echo "✅ Package prepared"
-          else
-            echo "❌ No deb files found!"
-            exit 1
-          fi
+          cd build/Release
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+          TAG="v${{ github.run_number }}"
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
 
-      - name: Create Release and Upload Asset
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ github.run_number }}
           name: Release v${{ github.run_number }}
+          body: "Automated release #${{ github.run_number }}"
           draft: false
           prerelease: false
           files: |
-            bulk-0.0.${{ github.run_number }}-Linux.deb
+            build/Release/bulk-0.0.${{ github.run_number }}-Linux.deb
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
